@@ -1,0 +1,51 @@
+name: 更新辦公日曆表
+
+on:
+  schedule:
+    # UTC 0 點＝臺灣 8 點；每年 7–12 月的 1 日與 15 日
+    - cron: "0 0 1,15 7-12 *"
+  workflow_dispatch:
+    inputs:
+      year:
+        description: "指定年份（逗號分隔），留空為來年"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取出程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: 執行轉換
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          # 經由環境變數傳入，避免將不可信輸入直接內插進 shell（命令注入防護）
+          INPUT_YEAR: ${{ github.event.inputs.year }}
+        run: |
+          if [ -n "$INPUT_YEAR" ]; then
+            uv run twcal --year "$INPUT_YEAR"
+          else
+            uv run twcal
+          fi
+
+      - name: 提交變更（若有）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain data/)" ]; then
+            git add data/
+            git commit -m "chore(data): 自動更新辦公日曆表 JSON"
+            git push
+          else
+            echo "資料無變更，略過提交。"
+          fi
