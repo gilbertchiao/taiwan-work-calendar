@@ -1,0 +1,13 @@
+# Working/Temporary directories（不納入版控）
+work/
+temp/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+.uv/
