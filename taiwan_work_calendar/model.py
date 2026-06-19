@@ -12,16 +12,18 @@ from .errors import UnknownCategoryError
 # 放假類：一般機關學校不上班
 NON_WORKING_CATEGORIES = {
     "星期六、星期日",
+    "星期日",  # 部分舊資料單獨標示週日
     "放假之紀念日及節日",
     "補假",
     "調整放假日",
 }
 
-# 上班類：補行上班（補班），即使落在週末仍須上班
-WORKING_CATEGORIES = {"補行上班"}
+# 上班類：補行上班（補班），即使落在週末仍須上班；舊資料用「補行上班日」
+WORKING_CATEGORIES = {"補行上班", "補行上班日"}
 
-# 僅供參考類：職業別節日（如警察節），一般機關照常上班，不影響 isWorkday
-INFO_ONLY_CATEGORIES = {"特定節日"}
+# 僅供參考類：一般機關照常上班、不影響 isWorkday（依基準週一～五）。
+# 含職業別節日（如警察節、勞動節）與無「放假之」前綴的紀念日及節日（如婦女節、教師節）。
+INFO_ONLY_CATEGORIES = {"特定節日", "紀念日及節日"}
 
 KNOWN_CATEGORIES = (
     NON_WORKING_CATEGORIES | WORKING_CATEGORIES | INFO_ONLY_CATEGORIES

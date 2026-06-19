@@ -24,9 +24,25 @@ def test_makeup_workday_overrides_weekend():
     assert model.derive_is_workday(date(2027, 6, 19), "補行上班") is True
 
 
+def test_makeup_workday_with_day_suffix_overrides_weekend():
+    # 舊資料用「補行上班日」（多一個日），語意同補行上班
+    assert model.derive_is_workday(date(2013, 2, 23), "補行上班日") is True  # 週六補班
+
+
+def test_sunday_variant_is_holiday():
+    # 部分舊資料單獨用「星期日」分類
+    assert model.derive_is_workday(date(2013, 2, 24), "星期日") is False  # 週日
+
+
 def test_special_festival_does_not_override():
     # 特定節日（警察節）不覆蓋：週一仍上班
     assert model.derive_is_workday(date(2026, 6, 15), "特定節日") is True
+
+
+def test_commemorative_day_does_not_override():
+    # 紀念日及節日（如婦女節，無「放假之」前綴）一般機關照常上班，不覆蓋基準
+    assert model.derive_is_workday(date(2013, 3, 8), "紀念日及節日") is True  # 週五照常上班
+    assert model.derive_is_workday(date(2014, 3, 8), "紀念日及節日") is False  # 週六本就放假
 
 
 def test_validate_categories_raises_on_unknown():
