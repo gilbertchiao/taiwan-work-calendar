@@ -74,5 +74,16 @@ class SourceMismatchError(CalendarError):
                 f"| {d['date']} | {d['tpe']} | {d['nwt']} | "
                 f"{d['tpe_category'] or '（無）'} | {d['nwt_category'] or '（無）'} |"
             )
-        lines.append("\n請確認來源資料並修正程式或回報來源單位後重跑。")
+        lines.append(
+            "\n確認哪個來源正確後，於 `overrides.json` 新增對應日期並指定信任來源，"
+            "commit 後下次執行即自動解決此歧異，例如：\n"
+        )
+        example = self.diffs[0]["date"] if self.diffs else "YYYY-MM-DD"
+        lines.append(
+            "```json\n"
+            "{\n"
+            f'  "{example}": {{ "trust": "tpe", "reason": "說明哪個來源正確及原因" }}\n'
+            "}\n"
+            "```"
+        )
         return "\n".join(lines)

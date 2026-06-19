@@ -14,6 +14,7 @@ from .builder import build_year, merge_records
 from .errors import CalendarError
 from .issues import client_from_env, report_error
 from .model import validate_categories
+from .overrides import apply_overrides_to_records, load_overrides
 from .reconcile import reconcile_year
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ def _fetch_all(fetchers: dict) -> dict:
     return available
 
 
-def _plan_year(year: int, available: dict):
+def _plan_year(year: int, available: dict, overrides: dict):
     """回傳 (records, sources) 或 None（該年尚未發布）。會做分類驗證與交叉比對。"""
     have = {c: r for c, r in available.items() if _records_have_year(r, year)}
     if not have:
@@ -62,22 +63,28 @@ def _plan_year(year: int, available: dict):
     for code, records in have.items():
         validate_categories(code, records)
     if "tpe" in have and "nwt" in have:
-        reconcile_year(year, have["tpe"], have["nwt"])
+        reconcile_year(year, have["tpe"], have["nwt"], overrides=overrides)
         records = merge_records(have["tpe"], have["nwt"])
+        records = apply_overrides_to_records(records, have, overrides)
         return records, ["tpe", "nwt"]
     code, records = next(iter(have.items()))
     return records, [code]
 
 
-def run(argv=None, *, today=None, fetchers=None, client=None) -> int:
+def run(argv=None, *, today=None, fetchers=None, client=None, overrides=None) -> int:
     """執行轉換流程，回傳退出碼。"""
     parser = argparse.ArgumentParser(description="臺灣辦公日曆表轉 JSON")
     parser.add_argument("--year", help="指定年份（逗號分隔），預設為來年")
     parser.add_argument("--data-dir", default="data", help="輸出目錄，預設 data")
+    parser.add_argument(
+        "--overrides", default="overrides.json", help="來源歧異覆寫設定檔，預設 overrides.json"
+    )
     args = parser.parse_args(argv)
 
     today = today or date.today()
     fetchers = fetchers or {"tpe": sources.fetch_tpe, "nwt": sources.fetch_nwt}
+    if overrides is None:
+        overrides = load_overrides(args.overrides)
     target_years = determine_target_years(args.year, today)
     logger.info("目標年份：%s", target_years)
 
@@ -90,7 +97,7 @@ def run(argv=None, *, today=None, fetchers=None, client=None) -> int:
     plans = {}
     try:
         for year in target_years:
-            plan = _plan_year(year, available)
+            plan = _plan_year(year, available, overrides)
             if plan is not None:
                 plans[year] = plan
     except CalendarError as exc:

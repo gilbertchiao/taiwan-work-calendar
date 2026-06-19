@@ -101,6 +101,24 @@ def test_run_halts_and_reports_on_mismatch(tmp_path):
     assert any("資料不一致" in t for t in created)
 
 
+def test_run_generates_with_override_resolving_mismatch(tmp_path):
+    # 2027-09-25(週六) tpe 補行上班(上班)、nwt 無(放假) → 不一致；以覆寫信任 tpe 解決
+    tpe = _records_for_year(2027, {"20270925": {"name": "", "category": "補行上班", "description": ""}})
+    nwt = _records_for_year(2027)
+    code = main.run(
+        ["--data-dir", str(tmp_path)],
+        today=date(2026, 7, 1),
+        fetchers={"tpe": lambda: tpe, "nwt": lambda: nwt},
+        client=None,
+        overrides={"2027-09-25": {"trust": "tpe"}},
+    )
+    assert code == 0
+    data = json.loads((tmp_path / "2027.json").read_text(encoding="utf-8"))
+    day = next(d for d in data["days"] if d["date"] == "2027-09-25")
+    assert day["isWorkday"] is True
+    assert day["category"] == "補行上班"
+
+
 def test_run_fatal_when_both_sources_fail(tmp_path):
     def boom():
         raise RuntimeError("壞了")
