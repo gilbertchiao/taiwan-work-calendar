@@ -165,6 +165,36 @@
     }
     .picker button:hover { background: #245a96; }
 
+    /* 本機檔案選擇器（file:// 開啟時的後備方案） */
+    .localpick { margin-top: 18px; }
+    .localpick .drop {
+      border: 2px dashed #b9c6d6;
+      border-radius: 10px;
+      padding: 22px 16px;
+      background: #f7fafc;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .localpick .drop.dragover {
+      background: #eef5ff;
+      border-color: #2b6cb0;
+    }
+    .localpick label.choose {
+      display: inline-block;
+      font-size: 1rem;
+      padding: 8px 18px;
+      border: 1px solid #2b6cb0;
+      background: #2b6cb0;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .localpick label.choose:hover { background: #245a96; }
+    .localpick .hint { margin-top: 10px; color: var(--text-muted); font-size: 0.9rem; }
+    .localpick input[type="file"] {
+      position: absolute; width: 1px; height: 1px;
+      opacity: 0; overflow: hidden; clip: rect(0 0 0 0);
+    }
+
     @media (max-width: 760px) {
       .months { grid-template-columns: repeat(2, 1fr); }
     }
@@ -232,7 +262,87 @@
         box.appendChild(el("p", { text: line }));
       });
       if (opts.withPicker) box.appendChild(buildPicker());
+      if (opts.localPicker) box.appendChild(buildLocalPicker(opts.localPicker));
       app.appendChild(box);
+    }
+
+    // 本機檔案選擇器：在 file:// 下，瀏覽器禁止 fetch 讀取本機檔案，
+    // 改由「使用者主動選取／拖放」檔案，再以 FileReader 讀取後渲染。
+    // expectedName 為選填的期望檔名（例如 "2025.json"），僅作為提示。
+    function buildLocalPicker(expectedName) {
+      const wrap = el("div", { className: "localpick" });
+      const drop = el("div", { className: "drop" });
+
+      const label = el("label", { className: "choose", text: "選擇 JSON 檔案" });
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json,application/json";
+
+      const hintText = typeof expectedName === "string"
+        ? "請選擇（或拖放）" + expectedName + " —— 也可選其他年度的 JSON。"
+        : "請選擇（或拖放）data 目錄內的 YYYY.json。";
+      const hint = el("div", { className: "hint", text: hintText });
+
+      label.appendChild(input);
+      drop.appendChild(label);
+      drop.appendChild(hint);
+      wrap.appendChild(drop);
+
+      input.addEventListener("change", function () {
+        if (input.files && input.files[0]) readLocalFile(input.files[0]);
+      });
+
+      // 拖放支援
+      ["dragenter", "dragover"].forEach(function (evt) {
+        drop.addEventListener(evt, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          drop.classList.add("dragover");
+        });
+      });
+      ["dragleave", "dragend"].forEach(function (evt) {
+        drop.addEventListener(evt, function () { drop.classList.remove("dragover"); });
+      });
+      drop.addEventListener("drop", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        drop.classList.remove("dragover");
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          readLocalFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      return wrap;
+    }
+
+    // 以 FileReader 讀取使用者選取的本機檔案，解析 JSON 後渲染。
+    function readLocalFile(fileObj) {
+      showStatus({ title: "讀取中…" });
+      const reader = new FileReader();
+      reader.onload = function () {
+        let data;
+        try {
+          data = JSON.parse(reader.result);
+        } catch (err) {
+          showStatus({
+            error: true,
+            title: "JSON 解析失敗",
+            lines: ["所選檔案不是有效的 JSON：" + err.message],
+            localPicker: true
+          });
+          return;
+        }
+        render(data);
+      };
+      reader.onerror = function () {
+        showStatus({
+          error: true,
+          title: "檔案讀取失敗",
+          lines: ["無法讀取所選檔案，請再試一次。"],
+          localPicker: true
+        });
+      };
+      reader.readAsText(fileObj);
     }
 
     // 年份輸入器（無檔名參數時提供）
@@ -412,6 +522,23 @@
       const params = new URLSearchParams(location.search);
       const file = params.get("file");
 
+      // 以 file:// 開啟時，瀏覽器基於安全限制禁止網頁用 fetch 讀取本機檔案，
+      // 因此不嘗試 fetch，直接提供「本機檔案選擇器」（使用者主動選取／拖放）。
+      // 這讓使用者免啟動 web server 也能檢視。
+      if (location.protocol === "file:") {
+        // file 參數通過白名單時當作期望檔名提示，否則僅顯示通用提示
+        const hint = file && FILE_PATTERN.test(file) ? file : true;
+        showStatus({
+          title: "以本機檔案開啟",
+          lines: [
+            "偵測到以 file:// 開啟，瀏覽器基於安全限制禁止網頁自動讀取本機檔案。",
+            "請於下方選擇或拖放要檢視的 JSON 檔案即可（無需啟動伺服器）。"
+          ],
+          localPicker: hint
+        });
+        return;
+      }
+
       if (!file) {
         showStatus({
           title: "請指定要檢視的年度資料",
@@ -455,7 +582,7 @@
             title: "無法載入資料",
             lines: [
               "讀取 " + file + " 失敗：" + err.message,
-              "請確認該檔案存在於本檔案的同一目錄，且透過 http(s) 開啟（非 file://）。"
+              "請確認該檔案存在於本檔案的同一目錄。"
             ],
             withPicker: true
           });

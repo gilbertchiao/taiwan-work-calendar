@@ -91,15 +91,18 @@ uv run pytest
 
 `data/viewer.html` 是一支純前端、零依賴的檢視工具，把 `data/YYYY.json` 以官方「辦公日曆表」的版面呈現：每月一格、一列三格共十二格，上班日白底、放假日淡粉紅底，方便快速目視整年的上班／放假分布。
 
-工具與 `YYYY.json` 同目錄，以 query parameter 指定年度檔案（例如 `viewer.html?file=2027.json`）。因為以 `fetch()` 載入 JSON，**須透過 http(s) 開啟，不能用 `file://` 直接開檔**：
+工具與 `YYYY.json` 同目錄，支援兩種開啟方式：
 
-```bash
-cd data
-python3 -m http.server 8000
-# 瀏覽器開啟 http://127.0.0.1:8000/viewer.html?file=2026.json
-```
+- **直接用瀏覽器開啟（免伺服器）**：雙擊 `data/viewer.html` 即可（`file://`）。因瀏覽器禁止網頁用 `fetch()` 讀取本機檔案，工具會自動改為顯示「選擇檔案」介面，由你手動選取或拖放 `YYYY.json`。
+- **透過本機 web server（可用 `?file=` 自動載入）**：
 
-也可將 `data/` 目錄部署到任何靜態主機（GitHub Pages、S3、Nginx 等）後直接存取。放假／上班直接採用 JSON 的 `isWorkday` 欄位，補班、補假與 `overrides.json` 覆寫結果都會正確反映。
+  ```bash
+  cd data
+  python3 -m http.server 8000
+  # 瀏覽器開啟 http://127.0.0.1:8000/viewer.html?file=2026.json
+  ```
+
+也可將 `data/` 目錄部署到任何靜態主機（GitHub Pages、S3、Nginx 等）後以 `?file=` 直接存取。放假／上班直接採用 JSON 的 `isWorkday` 欄位，補班、補假與 `overrides.json` 覆寫結果都會正確反映。
 
 工具刻意**零第三方套件**（避免供應鏈攻擊），並對 `file` 參數做嚴格白名單驗證 `^[0-9]{4}\.json$`、全程以 `textContent` 渲染（避免路徑穿越與 XSS）。詳細說明、資安設計與客製方式見 [`docs/viewer.md`](docs/viewer.md)。
 
