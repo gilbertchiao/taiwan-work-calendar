@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    內容安全政策（CSP）：
+    - default-src 'self'：只允許載入同源資源（同目錄的 YYYY.json）。
+    - script-src 'unsafe-inline'：本檔案的 JS 為內嵌，無任何外部 <script src>，
+      杜絕供應鏈攻擊（Supply Chain Attack）。
+    - 不允許 object/embed/base 等，降低注入面。
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none'" />
+  <title>政府行政機關辦公日曆表檢視器</title>
+  <style>
+    :root {
+      /* 放假日底色：對應圖檔的淡粉紅 */
+      --holiday-bg: #f9c6e7;
+      --holiday-border: #e89ccd;
+      /* 上班日底色：白底 */
+      --workday-bg: #ffffff;
+      --grid-line: #cfcfcf;
+      --box-border: #333333;
+      --text-main: #1a1a1a;
+      --text-muted: #666666;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f4f4f6;
+      color: var(--text-main);
+      /* 字體適中略大 */
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei",
+                   "Segoe UI", system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    h1.title {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin: 8px 0 4px;
+      letter-spacing: 1px;
+    }
+
+    .summary {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    .summary strong { color: var(--text-main); }
+
+    /* 12 個月：3 欄 × 4 列 */
+    .months {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .month {
+      border: 2px solid var(--box-border);
+      border-radius: 4px;
+      background: #fff;
+      padding: 10px 10px 12px;
+    }
+
+    .month-name {
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 2px 0 8px;
+      letter-spacing: 4px;
+    }
+
+    table.cal {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    table.cal th,
+    table.cal td {
+      text-align: center;
+      padding: 0;
+      height: 30px;
+      font-size: 0.95rem;
+      border: 1px solid var(--grid-line);
+    }
+    table.cal th {
+      font-weight: 600;
+      border: none;
+      color: var(--text-main);
+      padding-bottom: 4px;
+    }
+    /* 空白格（補滿月初/月末）無框線 */
+    table.cal td.empty {
+      border: 1px solid transparent;
+      background: transparent;
+    }
+    table.cal td.workday { background: var(--workday-bg); }
+    table.cal td.holiday {
+      background: var(--holiday-bg);
+      border-color: var(--holiday-border);
+    }
+
+    /* 圖例 */
+    .legend {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 28px;
+      margin-top: 26px;
+      font-size: 0.95rem;
+    }
+    .legend .item { display: inline-flex; align-items: center; gap: 8px; }
+    .legend .swatch {
+      width: 26px; height: 18px;
+      border: 1px solid var(--box-border);
+      display: inline-block;
+    }
+    .legend .swatch.work { background: var(--workday-bg); }
+    .legend .swatch.holiday {
+      background: var(--holiday-bg);
+      border-color: var(--holiday-border);
+    }
+
+    /* 狀態訊息（載入中／錯誤） */
+    .status {
+      max-width: 640px;
+      margin: 60px auto;
+      padding: 24px 28px;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .status.error { border-color: #e6a3a3; background: #fff6f6; }
+    .status h2 { margin: 0 0 10px; font-size: 1.2rem; }
+    .status p  { margin: 6px 0; color: var(--text-muted); }
+    .status code {
+      background: #f0f0f0; padding: 2px 6px; border-radius: 4px;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+
+    .picker { margin-top: 16px; }
+    .picker input {
+      font-size: 1rem; padding: 6px 10px; width: 110px;
+      border: 1px solid #bbb; border-radius: 6px; text-align: center;
+    }
+    .picker button {
+      font-size: 1rem; padding: 6px 16px; margin-left: 8px;
+      border: 1px solid #2b6cb0; background: #2b6cb0; color: #fff;
+      border-radius: 6px; cursor: pointer;
+    }
+    .picker button:hover { background: #245a96; }
+
+    @media (max-width: 760px) {
+      .months { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .months { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      html, body { background: #fff; }
+      .page { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page" id="app">
+    <div class="status" id="status">
+      <h2>載入中…</h2>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    // ---------------------------------------------------------------------
+    // 常數設定
+    // ---------------------------------------------------------------------
+    // 嚴格白名單：只允許「四位數字 + .json」，例如 2027.json。
+    // 這道防線同時擋掉 path traversal（../）、絕對路徑、query injection、
+    // 以及任何夾帶特殊字元（< > " ' ? # 等）的檔名。
+    const FILE_PATTERN = /^[0-9]{4}\.json$/;
+
+    // 週標頭（週日起始，對應圖檔）
+    const WEEK_HEADERS = ["日", "一", "二", "三", "四", "五", "六"];
+    // 中文月份名稱
+    const MONTH_NAMES = [
+      "一 月", "二 月", "三 月", "四 月", "五 月", "六 月",
+      "七 月", "八 月", "九 月", "十 月", "十一 月", "十二 月"
+    ];
+
+    // ---------------------------------------------------------------------
+    // 工具函式：安全地建立 DOM 元素（一律用 textContent，不碰 innerHTML）
+    // ---------------------------------------------------------------------
+    function el(tag, opts) {
+      const node = document.createElement(tag);
+      if (opts) {
+        if (opts.className) node.className = opts.className;
+        if (opts.text != null) node.textContent = String(opts.text);
+        if (opts.title != null) node.setAttribute("title", String(opts.title));
+      }
+      return node;
+    }
+
+    function clearApp() {
+      const app = document.getElementById("app");
+      while (app.firstChild) app.removeChild(app.firstChild);
+      return app;
+    }
+
+    // 顯示狀態訊息（載入中、錯誤、無參數等）
+    function showStatus(opts) {
+      const app = clearApp();
+      const box = el("div", { className: "status" + (opts.error ? " error" : "") });
+      box.appendChild(el("h2", { text: opts.title }));
+      (opts.lines || []).forEach(function (line) {
+        box.appendChild(el("p", { text: line }));
+      });
+      if (opts.withPicker) box.appendChild(buildPicker());
+      app.appendChild(box);
+    }
+
+    // 年份輸入器（無檔名參數時提供）
+    function buildPicker() {
+      const wrap = el("div", { className: "picker" });
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "1911";
+      input.max = "9999";
+      input.placeholder = "YYYY";
+      const btn = el("button", { text: "檢視" });
+      function go() {
+        const v = input.value.trim();
+        // 僅接受四位數字，組裝成安全的相對網址
+        if (/^[0-9]{4}$/.test(v)) {
+          // 用 encodeURIComponent 再次保險（雖然已驗證為純數字）
+          location.search = "?file=" + encodeURIComponent(v + ".json");
+        } else {
+          input.focus();
+        }
+      }
+      btn.addEventListener("click", go);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") go();
+      });
+      wrap.appendChild(input);
+      wrap.appendChild(btn);
+      return wrap;
+    }
+
+    // ---------------------------------------------------------------------
+    // 月曆渲染
+    // ---------------------------------------------------------------------
+    // 將 ISO weekday（一=1 … 日=7）轉成「週日起始」欄位索引（日=0 … 六=6）
+    function isoToColumn(isoWeekday) {
+      return isoWeekday === 7 ? 0 : isoWeekday;
+    }
+
+    function buildMonthTable(monthIndex, daysOfMonth) {
+      const table = el("table", { className: "cal" });
+
+      // 表頭
+      const thead = el("thead");
+      const headRow = el("tr");
+      WEEK_HEADERS.forEach(function (h) {
+        headRow.appendChild(el("th", { text: h }));
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = el("tbody");
+      let row = el("tr");
+      let col = 0;
+
+      // 月初前置空白格
+      if (daysOfMonth.length > 0) {
+        const firstCol = isoToColumn(daysOfMonth[0].weekday);
+        for (; col < firstCol; col++) {
+          row.appendChild(el("td", { className: "empty" }));
+        }
+      }
+
+      daysOfMonth.forEach(function (day) {
+        if (col === 7) {
+          tbody.appendChild(row);
+          row = el("tr");
+          col = 0;
+        }
+        const dayNum = parseInt(day.date.slice(8, 10), 10);
+        const cls = day.isWorkday ? "workday" : "holiday";
+        // 節日名稱僅作為 tooltip（title），不在版面顯示
+        const tip = day.name || day.category || null;
+        const cell = el("td", { className: cls, text: dayNum });
+        if (!day.isWorkday && tip) cell.setAttribute("title", tip);
+        row.appendChild(cell);
+        col++;
+      });
+
+      // 月末補滿空白格
+      for (; col < 7 && col > 0; col++) {
+        row.appendChild(el("td", { className: "empty" }));
+      }
+      tbody.appendChild(row);
+      table.appendChild(tbody);
+      return table;
+    }
+
+    function render(data) {
+      // 防禦性檢查資料結構：須為物件，且 days 為「非空」陣列
+      if (!data || typeof data !== "object" || !Array.isArray(data.days) || data.days.length === 0) {
+        showStatus({
+          error: true,
+          title: "資料格式錯誤",
+          lines: ["JSON 內容缺少有效的 days 陣列（或為空），無法顯示。"]
+        });
+        return;
+      }
+
+      // 推導年份：優先取 data.year，否則由首日日期前四碼推得；
+      // 最後再驗證為合理西元年（>= 民國元年 1912），避免標題出現「中華民國-1911年」等錯誤。
+      let year = Number(data.year);
+      if (!Number.isInteger(year) || year < 1912) {
+        year = parseInt(String((data.days[0] && data.days[0].date) || "").slice(0, 4), 10);
+      }
+      if (!Number.isInteger(year) || year < 1912 || year > 9999) {
+        showStatus({
+          error: true,
+          title: "資料格式錯誤",
+          lines: ["無法判斷有效的西元年份，無法顯示。"]
+        });
+        return;
+      }
+
+      // 依月份分組（用日期字串前綴，避免時區誤差）
+      const byMonth = Array.from({ length: 12 }, function () { return []; });
+      data.days.forEach(function (d) {
+        if (typeof d.date !== "string" || d.date.length < 10) return;
+        const m = parseInt(d.date.slice(5, 7), 10);
+        if (m >= 1 && m <= 12) byMonth[m - 1].push(d);
+      });
+      // 確保每月日期由小到大
+      byMonth.forEach(function (list) {
+        list.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+      });
+
+      const app = clearApp();
+
+      // 標題：中華民國 NNN 年（西元 YYYY 年）政府行政機關辦公日曆表
+      const rocYear = year - 1911;
+      const title = el("h1", { className: "title" });
+      title.textContent = "中華民國" + rocYear + "年（西元" + year + "年）政府行政機關辦公日曆表";
+      app.appendChild(title);
+
+      // 摘要
+      if (data.summary && typeof data.summary === "object") {
+        const s = data.summary;
+        const sum = el("div", { className: "summary" });
+        sum.appendChild(document.createTextNode("全年 "));
+        sum.appendChild(el("strong", { text: s.total != null ? s.total : "—" }));
+        sum.appendChild(document.createTextNode(" 天　上班 "));
+        sum.appendChild(el("strong", { text: s.workdays != null ? s.workdays : "—" }));
+        sum.appendChild(document.createTextNode(" 天　放假 "));
+        sum.appendChild(el("strong", { text: s.holidays != null ? s.holidays : "—" }));
+        sum.appendChild(document.createTextNode(" 天"));
+        app.appendChild(sum);
+      }
+
+      // 12 格月曆
+      const months = el("div", { className: "months" });
+      for (let i = 0; i < 12; i++) {
+        const box = el("div", { className: "month" });
+        box.appendChild(el("div", { className: "month-name", text: MONTH_NAMES[i] }));
+        box.appendChild(buildMonthTable(i, byMonth[i]));
+        months.appendChild(box);
+      }
+      app.appendChild(months);
+
+      // 圖例
+      const legend = el("div", { className: "legend" });
+      const workItem = el("span", { className: "item" });
+      workItem.appendChild(el("span", { className: "swatch work" }));
+      workItem.appendChild(el("span", { text: "上班日" }));
+      const holItem = el("span", { className: "item" });
+      holItem.appendChild(el("span", { className: "swatch holiday" }));
+      holItem.appendChild(el("span", { text: "放假日" }));
+      legend.appendChild(workItem);
+      legend.appendChild(holItem);
+      app.appendChild(legend);
+
+      document.title = rocYear + "年 政府行政機關辦公日曆表";
+    }
+
+    // ---------------------------------------------------------------------
+    // 進入點：解析參數 → 驗證 → 載入 → 渲染
+    // ---------------------------------------------------------------------
+    function main() {
+      const params = new URLSearchParams(location.search);
+      const file = params.get("file");
+
+      if (!file) {
+        showStatus({
+          title: "請指定要檢視的年度資料",
+          lines: [
+            "用法：viewer.html?file=YYYY.json（例如 viewer.html?file=2027.json）",
+            "或在下方輸入年份："
+          ],
+          withPicker: true
+        });
+        return;
+      }
+
+      // 嚴格白名單驗證
+      if (!FILE_PATTERN.test(file)) {
+        showStatus({
+          error: true,
+          title: "檔名格式不合法",
+          lines: [
+            "file 參數僅接受「四位數字 + .json」，例如 2027.json。",
+            "已拒絕載入以保護安全（防止路徑穿越與注入）。"
+          ],
+          withPicker: true
+        });
+        return;
+      }
+
+      showStatus({ title: "載入中…" });
+
+      // 以相對路徑載入同目錄 JSON；cache:no-store 確保資料即時
+      fetch("./" + file, { cache: "no-store" })
+        .then(function (resp) {
+          if (!resp.ok) {
+            throw new Error("HTTP " + resp.status + " " + resp.statusText);
+          }
+          return resp.json();
+        })
+        .then(function (data) { render(data); })
+        .catch(function (err) {
+          showStatus({
+            error: true,
+            title: "無法載入資料",
+            lines: [
+              "讀取 " + file + " 失敗：" + err.message,
+              "請確認該檔案存在於本檔案的同一目錄，且透過 http(s) 開啟（非 file://）。"
+            ],
+            withPicker: true
+          });
+        });
+    }
+
+    main();
+  </script>
+</body>
+</html>
