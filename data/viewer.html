@@ -253,6 +253,10 @@
       return app;
     }
 
+    // 本機（file://）模式提示：非 null 時代表目前以 file:// 開啟，
+    // 其值為選檔提示（期望檔名字串或 true）。供錯誤畫面附上選檔器以利重試。
+    var LOCAL_HINT = null;
+
     // 顯示狀態訊息（載入中、錯誤、無參數等）
     function showStatus(opts) {
       const app = clearApp();
@@ -262,7 +266,12 @@
         box.appendChild(el("p", { text: line }));
       });
       if (opts.withPicker) box.appendChild(buildPicker());
-      if (opts.localPicker) box.appendChild(buildLocalPicker(opts.localPicker));
+      // 顯示本機檔案選擇器的時機：
+      // 1) 呼叫端明確指定 opts.localPicker；或
+      // 2) 處於 file:// 本機模式且本次為錯誤畫面 —— 讓使用者可在原畫面直接重新選檔，
+      //    免去手動重新整理。沿用 LOCAL_HINT 以保留相同的檔名提示。
+      const localPicker = opts.localPicker || (opts.error && LOCAL_HINT != null ? LOCAL_HINT : null);
+      if (localPicker) box.appendChild(buildLocalPicker(localPicker));
       app.appendChild(box);
     }
 
@@ -324,11 +333,11 @@
         try {
           data = JSON.parse(reader.result);
         } catch (err) {
+          // 本機模式錯誤畫面會自動附上選檔器（見 showStatus），可直接重選
           showStatus({
             error: true,
             title: "JSON 解析失敗",
-            lines: ["所選檔案不是有效的 JSON：" + err.message],
-            localPicker: true
+            lines: ["所選檔案不是有效的 JSON：" + err.message]
           });
           return;
         }
@@ -338,8 +347,7 @@
         showStatus({
           error: true,
           title: "檔案讀取失敗",
-          lines: ["無法讀取所選檔案，請再試一次。"],
-          localPicker: true
+          lines: ["無法讀取所選檔案，請再試一次。"]
         });
       };
       reader.readAsText(fileObj);
@@ -528,6 +536,8 @@
       if (location.protocol === "file:") {
         // file 參數通過白名單時當作期望檔名提示，否則僅顯示通用提示
         const hint = file && FILE_PATTERN.test(file) ? file : true;
+        // 記錄本機模式提示，讓之後任何錯誤畫面（含 render 的結構檢查）都能自動附上選檔器
+        LOCAL_HINT = hint;
         showStatus({
           title: "以本機檔案開啟",
           lines: [
