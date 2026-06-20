@@ -112,6 +112,8 @@ GitHub Actions（`.github/workflows/update-calendar.yml`）於**每年 7–12 �
 
 若執行時來年資料尚未由來源公告，視為「尚未發布」，正常結束、不產檔、不開 issue。
 
+> 維護者發版（打 tag、開 Release）的版本策略與步驟見 [`docs/release.md`](docs/release.md)。
+
 ## 來源不符的處理
 
 當發生下列情況時，程式會**自動開 issue 並中斷（完全不寫檔）**，交由開發者判斷處理，而非寫出可疑資料：
