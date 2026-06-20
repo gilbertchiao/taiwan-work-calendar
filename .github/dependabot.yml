@@ -1,0 +1,29 @@
+# Dependabot 版本更新設定
+# 安全警報（security updates）另於 GitHub repo Settings → Security 開啟，為事件驅動、不受此檔頻率影響。
+version: 2
+updates:
+  # Python 相依（uv.lock / pyproject.toml）
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # 把同次的多個更新合併成單一 PR，降低噪音
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # GitHub Actions（workflow 內的 uses:）
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
