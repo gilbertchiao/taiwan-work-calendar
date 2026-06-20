@@ -321,17 +321,30 @@
     }
 
     function render(data) {
-      // 防禦性檢查資料結構
-      if (!data || typeof data !== "object" || !Array.isArray(data.days)) {
+      // 防禦性檢查資料結構：須為物件，且 days 為「非空」陣列
+      if (!data || typeof data !== "object" || !Array.isArray(data.days) || data.days.length === 0) {
         showStatus({
           error: true,
           title: "資料格式錯誤",
-          lines: ["JSON 內容缺少 days 陣列，無法顯示。"]
+          lines: ["JSON 內容缺少有效的 days 陣列（或為空），無法顯示。"]
         });
         return;
       }
 
-      const year = Number(data.year) || Number(String(data.days[0] && data.days[0].date || "").slice(0, 4));
+      // 推導年份：優先取 data.year，否則由首日日期前四碼推得；
+      // 最後再驗證為合理西元年（>= 民國元年 1912），避免標題出現「中華民國-1911年」等錯誤。
+      let year = Number(data.year);
+      if (!Number.isInteger(year) || year < 1912) {
+        year = parseInt(String((data.days[0] && data.days[0].date) || "").slice(0, 4), 10);
+      }
+      if (!Number.isInteger(year) || year < 1912 || year > 9999) {
+        showStatus({
+          error: true,
+          title: "資料格式錯誤",
+          lines: ["無法判斷有效的西元年份，無法顯示。"]
+        });
+        return;
+      }
 
       // 依月份分組（用日期字串前綴，避免時區誤差）
       const byMonth = Array.from({ length: 12 }, function () { return []; });
