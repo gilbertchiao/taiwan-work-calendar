@@ -1,7 +1,8 @@
 {
   "year": 2027,
   "sources": [
-    "tpe"
+    "tpe",
+    "nwt"
   ],
   "summary": {
     "total": 365,
