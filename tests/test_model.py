@@ -54,8 +54,11 @@ def test_validate_categories_raises_on_unknown():
 
 def test_build_year_days_full_year_and_summary_fields():
     records = {
-        "20270101": {"name": "中華民國開國紀念日", "category": "放假之紀念日及節日",
-                     "description": "放假一日。"},
+        "20270101": {
+            "name": "中華民國開國紀念日",
+            "category": "放假之紀念日及節日",
+            "description": "放假一日。",
+        },
     }
     days = model.build_year_days(2027, records)
     assert len(days) == 365

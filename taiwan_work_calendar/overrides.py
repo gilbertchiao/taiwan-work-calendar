@@ -31,9 +31,7 @@ def load_overrides(path: Path) -> dict[str, dict]:
     return data
 
 
-def apply_overrides_to_records(
-    records: dict, have: dict, overrides: dict
-) -> dict:
+def apply_overrides_to_records(records: dict, have: dict, overrides: dict) -> dict:
     """依覆寫設定，將指定日期改採被信任來源的記錄。
 
     - records：合併後（預設）記錄，鍵為 YYYYMMDD。

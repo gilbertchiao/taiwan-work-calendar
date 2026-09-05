@@ -114,9 +114,12 @@ def run(argv=None, *, today=None, fetchers=None, client=None, overrides=None) ->
     for year, (records, src) in plans.items():
         year_data = build_year(year, records, src)
         path = write_year_file(data_dir, year_data)
-        logger.info("已寫出 %s（上班 %d 天 / 放假 %d 天）",
-                    path, year_data["summary"]["workdays"],
-                    year_data["summary"]["holidays"])
+        logger.info(
+            "已寫出 %s（上班 %d 天 / 放假 %d 天）",
+            path,
+            year_data["summary"]["workdays"],
+            year_data["summary"]["holidays"],
+        )
     return 0
 
 

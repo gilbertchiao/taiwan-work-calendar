@@ -19,7 +19,9 @@ def test_load_overrides_reads_entries(tmp_path):
 
 def test_apply_overrides_forces_trusted_record():
     have = {
-        "tpe": {"20260501": {"name": "勞動節", "category": "放假之紀念日及節日", "description": ""}},
+        "tpe": {
+            "20260501": {"name": "勞動節", "category": "放假之紀念日及節日", "description": ""}
+        },
         "nwt": {"20260501": {"name": "勞動節", "category": "特定節日", "description": ""}},
     }
     records = {"20260501": have["nwt"]["20260501"]}  # 原本誤採 nwt

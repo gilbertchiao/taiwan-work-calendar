@@ -3,15 +3,19 @@ from taiwan_work_calendar import builder
 
 def test_build_year_structure_and_summary():
     records = {
-        "20270101": {"name": "中華民國開國紀念日", "category": "放假之紀念日及節日",
-                     "description": "放假一日。"},
+        "20270101": {
+            "name": "中華民國開國紀念日",
+            "category": "放假之紀念日及節日",
+            "description": "放假一日。",
+        },
     }
     result = builder.build_year(2027, records, ["tpe", "nwt"])
     assert result["year"] == 2027
     assert result["sources"] == ["tpe", "nwt"]
     assert result["summary"]["total"] == 365
-    assert (result["summary"]["workdays"] + result["summary"]["holidays"]
-            == result["summary"]["total"])
+    assert (
+        result["summary"]["workdays"] + result["summary"]["holidays"] == result["summary"]["total"]
+    )
     assert len(result["days"]) == 365
     assert result["days"][0]["isWorkday"] is False
 

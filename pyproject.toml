@@ -9,11 +9,21 @@ dependencies = []
 twcal = "taiwan_work_calendar.main:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff>=0.5", "jsonschema>=4"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# 只檢查 Python 原始碼，不動 Markdown 文件內的程式碼區塊
+extend-exclude = ["*.md", "docs", "work", "temp", "tmp"]
+
+[tool.ruff.lint]
+# E/F：pyflakes + pycodestyle；I：import 排序；B：常見 bug 樣式；UP：現代語法
+select = ["E", "F", "I", "B", "UP"]
 
 [build-system]
 requires = ["hatchling"]
