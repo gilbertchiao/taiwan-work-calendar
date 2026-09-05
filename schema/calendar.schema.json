@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/gilbertchiao/taiwan-work-calendar/main/schema/calendar.schema.json",
+  "title": "臺灣辦公日曆表（年度）",
+  "description": "data/YYYY.json 的格式契約。每年一檔、全年逐日。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["year", "sources", "summary", "days"],
+  "properties": {
+    "year": { "type": "integer", "minimum": 1900, "maximum": 2200, "description": "西元年" },
+    "sources": {
+      "type": "array",
+      "description": "本年資料來源代碼（ISO 3166-2:TW 小寫）",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "enum": ["tpe", "nwt"] }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "workdays", "holidays"],
+      "properties": {
+        "total": { "type": "integer", "enum": [365, 366], "description": "全年天數" },
+        "workdays": { "type": "integer", "minimum": 0, "maximum": 366, "description": "上班日數" },
+        "holidays": { "type": "integer", "minimum": 0, "maximum": 366, "description": "放假日數" }
+      }
+    },
+    "days": {
+      "type": "array",
+      "description": "全年每一天，依日期排序",
+      "minItems": 365,
+      "maxItems": 366,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "weekday", "isWorkday", "name", "category", "description"],
+        "properties": {
+          "date": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$" },
+          "weekday": { "type": "integer", "minimum": 1, "maximum": 7, "description": "ISO 星期：1=週一 … 7=週日" },
+          "isWorkday": { "type": "boolean", "description": "一般機關學校當日是否上班" },
+          "name": { "type": "string", "description": "特殊日名稱，非特殊日為空字串" },
+          "category": { "type": "string", "description": "來源 holidayCategory，非特殊日為空字串" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}
