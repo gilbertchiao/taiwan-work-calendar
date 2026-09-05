@@ -1,6 +1,53 @@
 # taiwan-work-calendar 臺灣辦公日曆表 JSON
 
+[![CI](https://github.com/gilbertchiao/taiwan-work-calendar/actions/workflows/ci.yml/badge.svg)](https://github.com/gilbertchiao/taiwan-work-calendar/actions/workflows/ci.yml)
+[![更新辦公日曆表](https://github.com/gilbertchiao/taiwan-work-calendar/actions/workflows/update-calendar.yml/badge.svg)](https://github.com/gilbertchiao/taiwan-work-calendar/actions/workflows/update-calendar.yml)
+[![Release](https://img.shields.io/github/v/release/gilbertchiao/taiwan-work-calendar)](https://github.com/gilbertchiao/taiwan-work-calendar/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 將臺北市、新北市政府開放資料平台的「辦公日曆表」轉換成每年一份、**全年逐日**的 JSON，方便程式判斷某一天政府行政機關是否上班。
+
+> **English**: Taiwan's official government work calendar (weekends, public holidays, make-up workdays) as one JSON file per year, auto-updated from Taipei and New Taipei open data. See [Quick start](#快速取用) for direct URLs and the [JSON Schema](schema/calendar.schema.json) for the format contract.
+
+## 快速取用
+
+不需安裝任何東西，直接抓 `data/YYYY.json` 即可（兩個網址都支援 CORS，可在瀏覽器端直接 fetch）：
+
+```
+# GitHub raw（永遠是 main 最新版）
+https://raw.githubusercontent.com/gilbertchiao/taiwan-work-calendar/main/data/2027.json
+
+# jsDelivr CDN（有快取、全球節點；@main 可換成 tag 如 @v1.0.0 或 commit SHA 釘版）
+https://cdn.jsdelivr.net/gh/gilbertchiao/taiwan-work-calendar@main/data/2027.json
+```
+
+目前涵蓋年份：2013 到 2027（每年下半年官方公告後自動新增來年）。
+
+**Python**
+
+```python
+import json
+import urllib.request
+
+url = "https://cdn.jsdelivr.net/gh/gilbertchiao/taiwan-work-calendar@main/data/2027.json"
+with urllib.request.urlopen(url) as resp:
+    calendar = json.load(resp)
+
+by_date = {day["date"]: day for day in calendar["days"]}
+print(by_date["2027-01-01"]["isWorkday"])  # False
+print(by_date["2027-01-01"]["name"])       # 中華民國開國紀念日
+```
+
+**JavaScript**
+
+```js
+const url = "https://cdn.jsdelivr.net/gh/gilbertchiao/taiwan-work-calendar@main/data/2027.json";
+const calendar = await fetch(url).then((r) => r.json());
+const isWorkday = (iso) => calendar.days.find((d) => d.date === iso)?.isWorkday;
+console.log(isWorkday("2027-01-01")); // false
+```
+
+> JSON 格式契約以 [`schema/calendar.schema.json`](schema/calendar.schema.json)（JSON Schema 2020-12）為準，CI 會用它驗證每個 `data/YYYY.json`。格式變更依 [SemVer](docs/release.md) 跳版。
 
 臺灣行政院人事行政總處每年上半年公告來年辦公日曆表，但僅以文件、圖檔呈現，不利程式介接。本專案以下列兩個結構化來源為基礎自動產出 JSON。
 
@@ -81,8 +128,13 @@ uv run twcal --year 2025,2026
 # 指定輸出目錄（預設 data）
 uv run twcal --year 2025 --data-dir data
 
-# 執行測試
+# 執行測試、lint、格式檢查（與 CI 相同）
 uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+
+# 驗證 data/ 內所有 JSON 符合 schema 與內部一致性
+uv run python scripts/validate_data.py data
 ```
 
 預設只處理來年是為了避免既有的過去年份資料被異動；要補產特定年份再用 `--year` 指定。
@@ -108,9 +160,11 @@ uv run pytest
 
 ## 自動更新
 
-GitHub Actions（`.github/workflows/update-calendar.yml`）於**每年 7–12 月的 1 日與 15 日**自動執行，處理來年資料；`data/` 有變更才會自動 commit。也可在 Actions 頁面手動觸發（workflow_dispatch），並可輸入指定年份。
+GitHub Actions（`.github/workflows/update-calendar.yml`）於**每月 1 日與 15 日**自動執行，處理來年資料；產出會先經 `scripts/validate_data.py` 驗證，`data/` 有變更才會自動 commit。也可在 Actions 頁面手動觸發（workflow_dispatch），並可輸入指定年份。
 
-若執行時來年資料尚未由來源公告，視為「尚未發布」，正常結束、不產檔、不開 issue。
+若執行時來年資料尚未由來源公告（通常是上半年），視為「尚未發布」，正常結束、不產檔、不開 issue。全年排程而非只在下半年執行，是為了配合 workflow 內的 keepalive 步驟，避免 GitHub 對 60 天無活動的公開 repo 自動停用排程。
+
+來源下載失敗會以指數退避重試 3 次，仍失敗才退化為單一來源產出。
 
 > 維護者發版（打 tag、開 Release）的版本策略與步驟見 [`docs/release.md`](docs/release.md)。
 
