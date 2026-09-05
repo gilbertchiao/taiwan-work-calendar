@@ -1,6 +1,6 @@
 [project]
 name = "taiwan-work-calendar"
-version = "1.0.0"
+version = "1.1.0"
 description = "臺灣辦公日曆表轉 JSON"
 requires-python = ">=3.12"
 dependencies = []
