@@ -2,8 +2,10 @@ name: 更新辦公日曆表
 
 on:
   schedule:
-    # UTC 0 點＝臺灣 8 點；每年 7–12 月的 1 日與 15 日
-    - cron: "0 0 1,15 7-12 *"
+    # UTC 0 點＝臺灣 8 點；每月 1 日與 15 日全年執行。
+    # 來年資料通常於下半年公告，上半年執行時程式會判定「尚未發布」而正常結束、不寫檔；
+    # 全年執行是為了讓 workflow 持續活動，避免 GitHub 對閒置公開 repo 的排程停用機制。
+    - cron: "0 0 1,15 * *"
   workflow_dispatch:
     inputs:
       year:
@@ -14,16 +16,25 @@ on:
 permissions:
   contents: write
   issues: write
+  actions: write   # keepalive 步驟需要呼叫 enable-workflow API
+
+# 避免手動觸發與排程同時執行、互相搶著 push
+concurrency:
+  group: update-calendar
+  cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: 取出程式碼
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: 安裝 uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          enable-cache: true
 
       - name: 執行轉換
         env:
@@ -32,11 +43,15 @@ jobs:
           # 經由環境變數傳入，避免將不可信輸入直接內插進 shell（命令注入防護）
           INPUT_YEAR: ${{ github.event.inputs.year }}
         run: |
+          # --locked：uv.lock 與 pyproject.toml 不一致時直接失敗，而非靜默重新解析
           if [ -n "$INPUT_YEAR" ]; then
-            uv run twcal --year "$INPUT_YEAR"
+            uv run --locked twcal --year "$INPUT_YEAR"
           else
-            uv run twcal
+            uv run --locked twcal
           fi
+
+      - name: 驗證產出資料
+        run: uv run --locked python scripts/validate_data.py data
 
       - name: 提交變更（若有）
         run: |
@@ -49,3 +64,11 @@ jobs:
           else
             echo "資料無變更，略過提交。"
           fi
+
+      # GitHub 會在公開 repo 60 天無活動時自動停用排程 workflow。
+      # 每次執行都重新呼叫 enable API 可重設計時器，且不需產生空 commit。
+      - name: 維持排程啟用（keepalive）
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/update-calendar.yml/enable"
