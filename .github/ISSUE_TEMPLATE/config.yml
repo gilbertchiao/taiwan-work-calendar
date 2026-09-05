@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全漏洞回報
+    url: https://github.com/gilbertchiao/taiwan-work-calendar/security/advisories/new
+    about: 請勿在公開 issue 揭露漏洞，改用 Private vulnerability reporting。

@@ -39,3 +39,41 @@ def test_parse_nwt_schema_change_raises():
     bad = '"date","name"\n"20260101","x"\n'
     with pytest.raises(SchemaChangedError):
         sources.parse_nwt(bad)
+
+
+# ---- download 重試 ----
+
+
+def test_download_retries_then_succeeds(monkeypatch):
+    """前兩次失敗、第三次成功：應回傳內容，且不 sleep 真實時間。"""
+    calls = []
+    sleeps = []
+
+    def fake_open(url):
+        calls.append(url)
+        if len(calls) < 3:
+            raise OSError("connection reset")
+        return "Date,name\n"
+
+    monkeypatch.setattr(sources, "_open_url", fake_open)
+    monkeypatch.setattr(sources.time, "sleep", sleeps.append)
+
+    assert sources.download("http://x") == "Date,name\n"
+    assert len(calls) == 3
+    # 指數退避：第一次等 base，第二次等 base*2
+    assert sleeps == [sources._RETRY_BASE_DELAY, sources._RETRY_BASE_DELAY * 2]
+
+
+def test_download_gives_up_after_max_attempts(monkeypatch):
+    calls = []
+
+    def always_fail(url):
+        calls.append(url)
+        raise OSError("boom")
+
+    monkeypatch.setattr(sources, "_open_url", always_fail)
+    monkeypatch.setattr(sources.time, "sleep", lambda _: None)
+
+    with pytest.raises(OSError, match="boom"):
+        sources.download("http://x")
+    assert len(calls) == sources._MAX_ATTEMPTS

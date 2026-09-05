@@ -25,7 +25,8 @@ class SchemaChangedError(CalendarError):
 
     def issue_body(self) -> str:
         return (
-            f"來源 `{self.source}` 的 CSV 欄位與程式預期不符，請檢查來源是否改版並更新解析程式。\n\n"
+            f"來源 `{self.source}` 的 CSV 欄位與程式預期不符，"
+            "請檢查來源是否改版並更新解析程式。\n\n"
             f"- 預期欄位：{', '.join(self.expected)}\n"
             f"- 實際欄位：{', '.join(self.actual)}\n"
         )
@@ -45,7 +46,8 @@ class UnknownCategoryError(CalendarError):
 
     def issue_body(self) -> str:
         return (
-            f"來源 `{self.source}` 出現程式未定義的分類，無法判斷該日是否上班，已中斷且未寫出任何檔案。\n\n"
+            f"來源 `{self.source}` 出現程式未定義的分類，無法判斷該日是否上班，"
+            "已中斷且未寫出任何檔案。\n\n"
             f"- 分類：{self.category}\n"
             f"- 首次出現日期：{self.date}\n\n"
             f"請於 `taiwan_work_calendar/model.py` 的分類集合中新增此分類並指定語意後重跑。\n"
@@ -65,7 +67,8 @@ class SourceMismatchError(CalendarError):
 
     def issue_body(self) -> str:
         lines = [
-            f"`{self.year}` 年臺北（tpe）與新北（nwt）推導後的是否上班結果不一致，已中斷且未寫出任何檔案。\n",
+            f"`{self.year}` 年臺北（tpe）與新北（nwt）推導後的是否上班結果不一致，"
+            "已中斷且未寫出任何檔案。\n",
             "| 日期 | tpe 上班 | nwt 上班 | tpe 分類 | nwt 分類 |",
             "|---|---|---|---|---|",
         ]

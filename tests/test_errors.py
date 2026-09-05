@@ -1,7 +1,7 @@
 from taiwan_work_calendar.errors import (
     SchemaChangedError,
-    UnknownCategoryError,
     SourceMismatchError,
+    UnknownCategoryError,
 )
 
 
@@ -22,8 +22,13 @@ def test_unknown_category_issue_text():
 
 def test_source_mismatch_issue_text():
     diffs = [
-        {"date": "2027-09-28", "tpe": True, "nwt": False,
-         "tpe_category": "特定節日", "nwt_category": "放假之紀念日及節日"}
+        {
+            "date": "2027-09-28",
+            "tpe": True,
+            "nwt": False,
+            "tpe_category": "特定節日",
+            "nwt_category": "放假之紀念日及節日",
+        }
     ]
     err = SourceMismatchError(2027, diffs)
     assert "資料不一致" in err.issue_title()

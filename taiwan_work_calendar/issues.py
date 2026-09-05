@@ -43,12 +43,8 @@ class GitHubIssueClient:
 
     def create_issue(self, title: str, body: str, labels: list[str]) -> None:
         url = f"{_API}/repos/{self.repo}/issues"
-        payload = json.dumps(
-            {"title": title, "body": body, "labels": labels}
-        ).encode("utf-8")
-        request = urllib.request.Request(
-            url, data=payload, headers=self._headers(), method="POST"
-        )
+        payload = json.dumps({"title": title, "body": body, "labels": labels}).encode("utf-8")
+        request = urllib.request.Request(url, data=payload, headers=self._headers(), method="POST")
         with urllib.request.urlopen(request, timeout=_TIMEOUT) as response:
             response.read()
 

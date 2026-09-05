@@ -1,0 +1,45 @@
+name: 資料錯誤回報
+description: 某一天的上班／放假狀態或名稱與官方公告不符
+title: "[資料] YYYY-MM-DD 應為 …"
+labels: ["data-issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感謝回報。本專案資料由臺北市、新北市開放資料平台轉換而來，
+        若官方公告已更新但來源尚未反映，會以 `overrides.json` 修正。
+  - type: input
+    id: date
+    attributes:
+      label: 日期
+      description: 格式 YYYY-MM-DD
+      placeholder: "2027-02-15"
+    validations:
+      required: true
+  - type: dropdown
+    id: expected
+    attributes:
+      label: 正確狀態應為
+      options:
+        - 上班日
+        - 放假日
+        - 名稱／分類錯誤（狀態正確）
+    validations:
+      required: true
+  - type: input
+    id: current
+    attributes:
+      label: 目前 JSON 內的值
+      description: 貼上 `data/YYYY.json` 中該日的內容（isWorkday、name、category）
+  - type: input
+    id: reference
+    attributes:
+      label: 官方公告依據
+      description: 行政院人事行政總處或地方政府公告的連結
+      placeholder: "https://www.dgpa.gov.tw/..."
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補充說明

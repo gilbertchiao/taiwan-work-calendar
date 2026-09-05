@@ -79,7 +79,9 @@ def test_run_soft_skip_when_year_not_published(tmp_path):
 
 def test_run_halts_and_reports_on_mismatch(tmp_path):
     # tpe 把 2027-09-25(週六) 標補行上班、nwt 無 → 不一致 → 中斷不寫檔
-    tpe = _records_for_year(2027, {"20270925": {"name": "", "category": "補行上班", "description": ""}})
+    tpe = _records_for_year(
+        2027, {"20270925": {"name": "", "category": "補行上班", "description": ""}}
+    )
     nwt = _records_for_year(2027)
     created = []
 
@@ -103,7 +105,9 @@ def test_run_halts_and_reports_on_mismatch(tmp_path):
 
 def test_run_generates_with_override_resolving_mismatch(tmp_path):
     # 2027-09-25(週六) tpe 補行上班(上班)、nwt 無(放假) → 不一致；以覆寫信任 tpe 解決
-    tpe = _records_for_year(2027, {"20270925": {"name": "", "category": "補行上班", "description": ""}})
+    tpe = _records_for_year(
+        2027, {"20270925": {"name": "", "category": "補行上班", "description": ""}}
+    )
     nwt = _records_for_year(2027)
     code = main.run(
         ["--data-dir", str(tmp_path)],

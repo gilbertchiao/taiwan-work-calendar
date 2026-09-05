@@ -25,9 +25,7 @@ WORKING_CATEGORIES = {"補行上班", "補行上班日"}
 # 含職業別節日（如警察節、勞動節）與無「放假之」前綴的紀念日及節日（如婦女節、教師節）。
 INFO_ONLY_CATEGORIES = {"特定節日", "紀念日及節日"}
 
-KNOWN_CATEGORIES = (
-    NON_WORKING_CATEGORIES | WORKING_CATEGORIES | INFO_ONLY_CATEGORIES
-)
+KNOWN_CATEGORIES = NON_WORKING_CATEGORIES | WORKING_CATEGORIES | INFO_ONLY_CATEGORIES
 
 
 def derive_is_workday(d: date, category: str) -> bool:

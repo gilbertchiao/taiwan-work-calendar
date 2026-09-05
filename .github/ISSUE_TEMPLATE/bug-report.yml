@@ -1,0 +1,32 @@
+name: 程式問題回報
+description: 轉換程式、viewer.html 或 workflow 的錯誤
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: 元件
+      options:
+        - twcal 轉換程式
+        - data/viewer.html 檢視器
+        - GitHub Actions workflow
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 發生了什麼
+      description: 實際行為與預期行為
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 重現步驟
+      render: bash
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      description: release tag 或 commit SHA
